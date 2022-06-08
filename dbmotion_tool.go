@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"io/ioutil"
 )
 
 var ip = flag.String("h", "", "ip will be connected")
@@ -137,6 +138,13 @@ func sshInvalid() bool {
 
 func createTunnel() {
 	var p string
+
+	_, err := os.Stat("squids-ali-dbmotion.pem")
+	if err != nil && os.IsNotExist(err) {
+		genPem()
+		defer rmPem()
+	}
+
 	ports := GetListenPort()
 
 	rand.Seed(time.Now().UnixNano())
@@ -150,16 +158,68 @@ func createTunnel() {
 	}
 	msg := fmt.Sprintf("create tunnel for %s:%s on %s", *ip, *port, p)
 	fmt.Println(msg)
-
 	addr := fmt.Sprintf("%s:%s:%s", p, *ip, *port)
 	cmd := exec.Command("ssh", "-qngfNTR", addr, "dbmotion@dbmotion.squids.cn", "-i", 
 		"squids-ali-dbmotion.pem", "-p", "22222", "-o", "ServerAliveInterval=300")
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 	fmt.Println("tunnel for " + *ip + ":" + *port +" on " + p + " is created." )
+}
+
+func rmPem() {
+	os.Remove("squids-ali-dbmotion.pem")
+}
+
+const (
+	pemContent string = `-----BEGIN RSA PRIVATE KEY-----
+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
+-----END RSA PRIVATE KEY-----`
+)
+
+func genPem() {
+	if err := ioutil.WriteFile("squids-ali-dbmotion.pem", []byte(pemContent), 0600); err != nil {
+		fmt.Println("Can not generate pem file: " + err.Error())
+		os.Exit(1)
+	}
 }
 
 func isRoot() bool {
